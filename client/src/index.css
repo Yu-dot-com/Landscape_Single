@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme{
+  --color-bg: #FBF9F4;
+    --color-canvas: #FAF7F0;
+    --color-sidebar: #F5F2EA;
+    --color-text: #2F3E22;
+    --color-muted: #7E8B70;
+    --color-border: #E6E1D3;
+    --color-accent: #A3B18A;
+    --color-dark-accent: #606C38;
+    --color-danger: #E07A5F;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+.bg-canvas-grid {
+  background-color: #FAF3EB; /* Matches your warm canvas background tone */
+  background-size: 20px 20px; /* Controls the exact dimensions of each grid square */
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(127, 141, 115, 0.08) 1px, transparent 1px);
+}
+.custom-cursor {
+  position: fixed;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(45deg); /* Dynamic angle */
+}
+
