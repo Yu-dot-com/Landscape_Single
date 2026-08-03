@@ -6,13 +6,13 @@ export const register = async (request: Request, response: Response) => {
   try {
     const { username, email, hash_password } = request.body;
     const user = await authServices.register(username, email, hash_password);
-    if (!user) return response.status(300).json({ error: "smothing" });
-    response.status(201).json(user);
+    if (!user) return response.status(300).json({ message: "smothing" });
+    return response.status(201).json(user);
   } catch (error) {
     if (error instanceof Error) {
-      response.status(400).json({ error: error.message });
+      return response.status(400).json({ message: error.message });
     } else {
-      response.status(400).json({ error: "An unexpected error occurred" });
+      return response.status(400).json({ message: "An unexpected error occurred" });
     }
   }
 };
@@ -22,15 +22,15 @@ export const login = async (request: Request, response: Response) => {
     const { email, hash_password } = request.body;
     const login = await authServices.login(email, hash_password);
 
-    response.status(200).json(login);
+    return response.status(200).json(login);
   } catch (error) {
     if (error instanceof Error) {
-      response.status(401).json({
-        error: error.message,
+      return response.status(401).json({
+        message: error.message,
       });
     } else {
-      response.status(401).json({
-        error: "An unexpected error occurred",
+      return response.status(401).json({
+        message: "An unexpected error occurred",
       });
     }
   }
@@ -42,7 +42,7 @@ export const getCurrentUser = async (request: Request, response: Response) => {
     const result = await findUserByEmail(email);
     console.log(result);
 
-    return response.status(200).json({
+    return  response.status(200).json({
       user: {
         id: result.id,
         username: result.username,
@@ -52,12 +52,12 @@ export const getCurrentUser = async (request: Request, response: Response) => {
     });
   } catch (error) {
     if (error instanceof Error) {
-      response.status(401).json({
-        error: error.message,
+      return response.status(401).json({
+        message: error.message,
       });
     } else {
-      response.status(401).json({
-        error: "An unexpected error occurred",
+      return response.status(401).json({
+        message: "An unexpected error occurred",
       });
     }
   }
@@ -69,15 +69,15 @@ export const updateName = async (request: Request, response: Response) => {
     const { name } = request.body;
 
     const result = await authServices.updateName(id, name);
-    return response.status(200).json({result});
+    return  response.status(200).json({result});
   } catch (error) {
     if (error instanceof Error) {
-      response.status(400).json({
-        error: error.message,
+      return response.status(400).json({
+        message: error.message,
       });
     } else {
-      response.status(400).json({
-        error: "An unexpected error occurred",
+      return response.status(400).json({
+        message: "An unexpected error occurred",
       });
     }
   }

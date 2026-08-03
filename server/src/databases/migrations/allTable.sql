@@ -3,7 +3,7 @@
 -- =========================================================================
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Drop dependent tables first to clear relationships safely
+
 DROP TABLE IF EXISTS project_members CASCADE;
 DROP TABLE IF EXISTS placed_items CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS asset_subcategories CASCADE;
 DROP TABLE IF EXISTS asset_categories CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- Drop and recreate custom ENUM types
+
 DROP TYPE IF EXISTS project_role;
 CREATE TYPE project_role AS ENUM ('viewer', 'editor', 'admin');
 
@@ -41,7 +41,7 @@ CREATE TABLE asset_categories (
 -- =========================================================================
 -- 3. DEPENDENT / CHILD TABLES (Level 1)
 -- =========================================================================
-
+ 
 -- ASSET SUBCATEGORIES TABLE (Depends on asset_categories)
 CREATE TABLE asset_subcategories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,7 +55,7 @@ CREATE TABLE asset_subcategories (
 
 -- PROJECTS TABLE (Depends on users)
 CREATE TABLE projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- Added default generator
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
     owner_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -125,6 +125,8 @@ CREATE TABLE placed_items (
     height DOUBLE PRECISION NOT NULL,
     rotation DOUBLE PRECISION DEFAULT 0,
     z_index INTEGER DEFAULT 0,
+    points JSONB,
+    color VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_project_items_project
         FOREIGN KEY (project_id)

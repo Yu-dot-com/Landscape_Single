@@ -21,7 +21,8 @@
   },
   "include": [
   "src/**/*.ts",
-  "src/**/*.d.ts"
+  "src/**/*.d.ts",
+  "y-websocket.d.ts"
 ],
   "exclude": ["node_modules", "dist", "/test-db.ts"]
 }

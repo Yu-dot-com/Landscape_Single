@@ -1,5 +1,9 @@
 import * as projectRepo from "../repositories/project.repo";
 import { pool } from "../config/db";
+import redisClient from "../config/redis";
+import cloudinary from "../config/cloudinary";
+
+
 
 export const createProject = async (
   owner_id: string,
@@ -33,6 +37,7 @@ export const createProject = async (
       throw new Error("cant create ProjectMembers");
     }
     await client.query("COMMIT");
+    await redisClient.del([`projects:user:${owner_id}:own`]);
     return { project, addMembers };
   } catch (err) {
     await client.query("ROLLBACK");
@@ -56,8 +61,9 @@ export const deleteProject = async (project_id: string, user_id: string) => {
       user_id,
     );
     await client.query("COMMIT");
+    await redisClient.del([`projects:user:${user_id}:own`]);
     return deleteProject;
-    return { message: "Project deleted successfully" };
+    
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -65,18 +71,39 @@ export const deleteProject = async (project_id: string, user_id: string) => {
     client.release();
   }
 };
-
-export const updateProjectName = async (project_id: string, name: string) => {
+export const getProjectNameById=async(projectId:string)=>{
+  const result=await projectRepo.getProjectNameById(projectId);
+  if(!result){
+    throw new Error("Project not found");
+  }
+  return result;
+}
+export const updateProjectName = async (project_id: string, name: string,user_id:string) => {
   const result = await projectRepo.updateProjectName(project_id, name);
 
   if (!result) {
     throw new Error("Project not founnd");
   }
+  await redisClient.del([
+      `projects:user:${user_id}:own`,
+    ]);
   return result;
 };
 
 export const getOwnedProjects = async (user_id: string) => {
+  const cacheKey = `projects:user:${user_id}:own`;
+
+  const cachedProjects = await redisClient.get(cacheKey);
+
+  if (cachedProjects) {
+    console.log(`Redis HIT: ${cacheKey}`);
+    return JSON.parse(cachedProjects);
+  }
+  console.log(`Redis MISS: ${cacheKey}`);
   const result = await projectRepo.getOwnedProjects(user_id);
+  await redisClient.set(cacheKey, JSON.stringify(result), {
+    EX: 300,
+  });
   return result;
 };
 
@@ -89,7 +116,33 @@ export const getProjectCount = async (id: string) => {
   return result;
 };
 
-export const getProjectItems = async(projectId:string) => {
+export const getProjectItems = async (projectId: string) => {
   const result = await projectRepo.getProjectItems(projectId);
-  return result
-}
+  return result;
+};
+
+export const processThumbnail= async( projectId: string, thumbnailBase64: string, userId?: string) => {
+  const uploadResult = await cloudinary.uploader.upload(thumbnailBase64, {
+    folder: "landscape/thumbnails",
+    public_id: `project_${projectId}`,
+    overwrite: true,
+    transformation: [{ width: 400, height: 300, crop: "fill" }],
+  });
+
+  const thumbnailUrl = uploadResult.secure_url;
+
+  const result = await projectRepo.updateProjectThumbnail(
+    projectId,
+    thumbnailUrl
+  );
+
+  if (!result) {
+    throw new Error("Project not found");
+  }
+
+  if (userId) {
+    await redisClient.del([`projects:user:${userId}:own`]);
+  }
+
+  return result;
+};

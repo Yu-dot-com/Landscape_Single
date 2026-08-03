@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import * as memberRepo from "../repositories/member.repo";
 
 export const requireProjectRole = (allowedRoles: string[]) => {
+  console.log(allowedRoles)
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.id as string;
@@ -32,7 +33,7 @@ export const requireProjectRole = (allowedRoles: string[]) => {
       }
 
       if (!allowedRoles.includes(member.role)) {
-        return res.status(403).json({ message: "Forbidden" });
+        return res.status(403).json({ message: "You are not authorized for this action!" });
       }
 
       return next();

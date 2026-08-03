@@ -4,7 +4,7 @@ import { FiUploadCloud } from "react-icons/fi";
 import { useAddAsset, useGetCategory } from "../../hooks/useAsset";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { assetSchema } from "../../schemas/assetSchema";
-
+import { useToastStore } from "../../stores/useToastStore";
 interface UploadFormData {
   name: string;
   category_id: string;
@@ -28,6 +28,7 @@ export default function UploadPanel() {
   });
 
   const { data: assetCategory, isLoading: Loadingcategory } = useGetCategory();
+  const addToast = useToastStore((state) => state.addToast);
 
   const Category = assetCategory as any;
   const { mutate } = useAddAsset();
@@ -46,9 +47,24 @@ export default function UploadPanel() {
     }
   }, [Category, selectedCategory, setValue]);
 
-  if (Loadingcategory) {
-    return <p>Loading...</p>;
-  }
+if (Loadingcategory) {
+  return (
+    <div className="w-85 bg-bg rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center justify-center min-h-70">
+      <div className="relative w-10 h-10 mb-4">
+        <div className="absolute inset-0 rounded-full border-2 border-gray-100" />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#6B7A58] animate-spin" />
+      </div>
+      <p className="text-xs font-medium text-gray-500 tracking-wide">
+        Loading categories
+      </p>
+      <div className="flex gap-1 mt-2">
+        <span className="w-1 h-1 rounded-full bg-[#6B7A58]/60 animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-1 h-1 rounded-full bg-[#6B7A58]/60 animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-1 h-1 rounded-full bg-[#6B7A58]/60 animate-bounce" />
+      </div>
+    </div>
+  );
+}
 
   if (!Category || Category.length === 0) {
     return <p>Category list is empty</p>;
@@ -109,57 +125,80 @@ export default function UploadPanel() {
   //   }
   // };
 
-  const onSubmit = async (data: UploadFormData) => {
-    if (!file) {
-      alert("Please select a file first!");
-      return;
+const onSubmit = async (data: UploadFormData) => {
+  if (!file) {
+    addToast({
+      type: "error",
+      title: "No file selected",
+      message: "Please select an image before uploading.",
+    });
+    return;
+  }
+
+  setUploading(true);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append(
+      "upload_preset",
+      import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+    );
+
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error("Failed to upload image to Cloudinary.");
     }
-    setUploading(true);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append(
-        "upload_preset",
-        import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-      );
-      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
+    const result = await res.json();
+
+    const deleteToken = result.delete_token;
+    const imageUrl = result.secure_url;
+
+    mutate(
+      {
+        ...data,
+        image_path: imageUrl,
+        width: 100,
+        height: 100,
+        min_width: 40,
+        max_width: 300,
+        min_height: 40,
+        max_height: 300,
+      },
+      {
+        onSuccess: () => {
+          addToast({
+            type: "success",
+            title: "Asset uploaded",
+            message: `"${data.name}" has been added successfully.`,
+          });
+
+          reset();
+          setFile(null);
         },
-      );
 
-      if (!res.ok) {
-        throw new Error("Failed to upload");
-      }
-
-      const result = await res.json();
-      const deleteToken = result.delete_token;
-      const imageUrl = result.secure_url;
-      console.log(imageUrl)
-      mutate(
-        {
-          ...data,
-          image_path: imageUrl,
-          width: 100,
-          height: 100,
-          min_width: 40,
-          max_width: 300,
-          min_height: 40,
-          max_height: 300,
-        },
-        {
-          onSuccess: () => {
-            alert("Asset created successfully!");
-            reset();
-            setFile(null);
-          },
-          onError: async(error) => {
+        onError: async (error: any) => {
           console.error("Database save failed:", error);
-          alert("Failed to save asset info to database.");
+
+          addToast({
+            type: "error",
+            title: "Upload failed",
+            message:
+              error?.message ||
+              "Failed to save asset information.",
+          });
+
+          // Roll back uploaded image from Cloudinary
           if (deleteToken) {
             try {
               const deleteFormData = new FormData();
@@ -170,23 +209,34 @@ export default function UploadPanel() {
                 {
                   method: "POST",
                   body: deleteFormData,
-                }
+                },
               );
+
               console.log("Cloudinary image successfully rolled back.");
             } catch (deleteError) {
-              console.error("Failed to delete image from Cloudinary:", deleteError);
+              console.error(
+                "Failed to delete image from Cloudinary:",
+                deleteError,
+              );
             }
           }
         },
-        },
-      );
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("An error occurred during file upload.");
-    } finally {
-      setUploading(false);
-    }
-  };
+      },
+    );
+  } catch (error: any) {
+    console.error("Upload error:", error);
+
+    addToast({
+      type: "error",
+      title: "Upload failed",
+      message:
+        error?.message ||
+        "An unexpected error occurred while uploading the image.",
+    });
+  } finally {
+    setUploading(false);
+  }
+};
 
   return (
     <div className="w-85 bg-bg rounded-2xl border border-gray-100 shadow-sm p-5 font-sans text-gray-800">

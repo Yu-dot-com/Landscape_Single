@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: landscape-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Yu21622*       # Raw password for Postgres service
+      POSTGRES_DB: Landscape
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: landscape-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes     
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: landscape-client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://localhost:3000
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: landscape-server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=fwe3294jdwe
+      - DATABASE_URL=postgresql://postgres:Yu21622%2A@postgres:5432/Landscape
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  collab:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: landscape-collab
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run collab
+    environment:
+      - JWT_SECRET=fwe3294jdwe
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: landscape-worker
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:Yu21622%2A@postgres:5432/Landscape
+      - CLOUDINARY_CLOUD_NAME=ddalcxun8
+      - CLOUDINARY_API_KEY=915782966366777
+      - CLOUDINARY_API_SECRET=lnKVKIR1xe7PokgXxV7r1fjM7WI
+    command: npm run worker
+    depends_on:
+      - redis
+      - postgres
+
+volumes:
+  pgdata:
+  redisdata:

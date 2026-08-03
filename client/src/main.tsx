@@ -12,13 +12,14 @@ import MyProjects from "./pages/DashBoard/MyProjects.tsx";
 import DashboardLayout from "./Layouts/DashboardLayout.tsx";
 import Home from "./pages/DashBoard/Home.tsx";
 import CollaborativeProjects from "./pages/DashBoard/CollabrativeProjects.tsx";
-import Landing from "./components/Landing.tsx";
 import CanvasRoute from "./Layouts/CanvasRoute.tsx";
+import LandingPage from "./pages/Landing.tsx"
+import "./collaboration/yjs.ts"
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Landing></Landing>,
+    element: <LandingPage/>,
   },
   {
     path: "/landscape/:projectId",

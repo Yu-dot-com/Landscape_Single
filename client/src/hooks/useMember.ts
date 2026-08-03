@@ -37,8 +37,8 @@ export const useGetMembers = (projectId: string) => {
   });
 };
 
-export const deleteMember = async (projectId: string,userId:string) => {
-  return await apiClient.delete(`projects/${projectId}/member/delete`,{ data: { userId } });
+export const deleteMember = async (projectId: string,memberId:string) => {
+  return await apiClient.delete(`projects/${projectId}/member/delete`,{ data: { memberId } });
 };
 export const useDeleteMember = () => {
   const queryClient = useQueryClient();

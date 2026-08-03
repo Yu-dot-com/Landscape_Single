@@ -12,7 +12,9 @@ export const useCreateProject = () => {
   return useMutation({
     mutationFn: createProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["getOwnedProjects"]["projectCount"] });
+      queryClient.invalidateQueries({
+        queryKey: ["getOwnedProjects"]["projectCount"],
+      });
     },
   });
 };
@@ -46,7 +48,9 @@ export const useDeleteProject = () => {
   return useMutation({
     mutationFn: (id: string) => deleteProject(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["getOwnedProjects"]["projectCount"] });
+      queryClient.invalidateQueries({
+        queryKey: ["getOwnedProjects"]["projectCount"],
+      });
     },
     onError: (error) => {
       console.error("Failed to delete project:", error);
@@ -54,14 +58,26 @@ export const useDeleteProject = () => {
   });
 };
 
-export const updateProjectName = async (id: string,name:string) => {
+export const getRecentProjects = async (): Promise<projectType[]> => {
+  return (await apiClient.get("/project/get")) as projectType[];
+};
+
+export const useGetRecentProjects = () => {
+  return useQuery({
+    queryKey: ["recent_projects"],
+    queryFn: getRecentProjects,
+  });
+};
+
+export const updateProjectName = async (id: string, name: string) => {
   console.log("update ID:", id);
-  return await apiClient.patch(`/project/update/${id}`,{name});
+  return await apiClient.patch(`/project/update/${id}`, { name });
 };
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => updateProjectName(id,name),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateProjectName(id, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["getOwnedProjects"] });
     },
@@ -71,25 +87,53 @@ export const useUpdateProject = () => {
   });
 };
 
-
-export const getProjectCount = async() => {
-  return await apiClient.get(`project/count`)
-}
+export const getProjectCount = async () => {
+  return await apiClient.get(`project/count`);
+};
 export const useGetProjectCount = () => {
   return useQuery({
     queryKey: ["projectCount"],
-    queryFn: getProjectCount
-  })
-}
+    queryFn: getProjectCount,
+  });
+};
 
-export const getProjectItems = async(projectId:string) => {
-  return await apiClient.get(`project/canvas/${projectId}`)
-}
-export const useGetProjectItems = (projectId:string) => {
+export const getProjectItems = async (projectId: string) => {
+  return await apiClient.get(`project/canvas/${projectId}`);
+};
+export const useGetProjectItems = (projectId: string) => {
   return useQuery({
-    queryKey: ["projectItem",projectId],
-    queryFn:()=> getProjectItems(projectId),
+    queryKey: ["projectItem", projectId],
+    queryFn: () => getProjectItems(projectId),
     enabled: !!projectId,
-    retry: false
-  })
-}
+    retry: false,
+  });
+};
+
+export const updateProjectThumbnail = async (
+  projectId: string,
+  thumbnail: string,
+) => {
+  return await apiClient.post(`/project/${projectId}/thumbnail`, {
+    thumbnail,
+  });
+};
+export const useUpdateProjectThumbnail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      thumbnail,
+    }: {
+      projectId: string;
+      thumbnail: string;
+    }) => updateProjectThumbnail(projectId, thumbnail),
+
+    onSuccess: () => {
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["own_projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["shared_projects"] }),
+      ]);
+    },
+  });
+};

@@ -6,7 +6,7 @@ export const addMemberSchema = z.object({
 });
 
 export const deleteProjectMemberSchema= z.object({
-      userId: z.uuid("Invalid user_id"),
+      memberId: z.uuid("Invalid user_id"),
 
 })
 

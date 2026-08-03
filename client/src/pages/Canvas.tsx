@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+
 import {
   Stage,
   Layer,
@@ -6,438 +7,585 @@ import {
   Image as KonvaImage,
   Rect,
   Transformer,
-  Line,
+  Text,
   Circle,
 } from "react-konva";
+
 import { useDesignStore } from "../stores/useDesignStore";
 import type { AssetTemplate, PlacedItem } from "../types/assetTypes";
+
 import useImage from "use-image";
 import Konva from "konva";
+
 import { useGetAsset } from "../hooks/useAsset";
+
+import {
+  clearEditing,
+  setEditing,
+  setSelectedItem,
+} from "../collaboration/Awareness";
+
+import { useAwareness } from "../hooks/useAwareness";
+import { useCanvasItems } from "../collaboration/CanvasSynce";
+import { registerCanvasStage } from "../utils/exportCanvas";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+interface RemoteUser {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+}
 
 interface CanvasItemProps {
   item: PlacedItem;
-  template: any;
+  template: AssetTemplate;
   isSelected: boolean;
   onSelect: () => void;
-  store: any;
+  remoteUsers: RemoteUser[];
 }
 
-// -----------------------------------------------------------------
-// COMPONENT 1: Standard Raster Assets (Plants, Furniture)
-// -----------------------------------------------------------------
-function StandardItem({
+// ============================================================
+// STANDARD ITEM
+// ============================================================
+
+const StandardItem = memo(function StandardItem({
   item,
   template,
   isSelected,
   onSelect,
-  store,
+  remoteUsers,
 }: CanvasItemProps) {
   const [image, status] = useImage(template.imagePath || "", "anonymous");
 
   const shapeRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
 
+  // ----------------------------------------------------------
+  // Attach / detach transformer
+  // ----------------------------------------------------------
 
-  // Attach transformer to selected item
   useEffect(() => {
-    const node = shapeRef.current;
     const transformer = transformerRef.current;
+    const node = shapeRef.current;
 
-    if (node && transformer && isSelected) {
-      transformer.nodes([node]);
-      transformer.getLayer()?.batchDraw();
+    if (!transformer || !node) {
+      return;
     }
+
+    if (isSelected) {
+      transformer.nodes([node]);
+    } else {
+      transformer.nodes([]);
+    }
+
+    transformer.getLayer()?.batchDraw();
   }, [isSelected]);
 
+  // ----------------------------------------------------------
+  // Drag Start
+  // ----------------------------------------------------------
 
-  // Sync Zustand changes -> Konva node
-  useEffect(() => {
+  const handleDragStart = useCallback(() => {
+    useDesignStore.getState().setActivePlacedItemId(item.id);
+
+    setSelectedItem(item.id);
+
+    setEditing(item.id, "position");
+  }, [item.id]);
+
+  // ----------------------------------------------------------
+  // Drag End
+  // ----------------------------------------------------------
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      const node = e.target;
+
+      useDesignStore.getState().updateItemPosition(item.id, node.x(), node.y());
+
+      clearEditing();
+    },
+    [item.id],
+  );
+
+  // ----------------------------------------------------------
+  // Transform
+  // ----------------------------------------------------------
+
+  const handleTransform = useCallback(() => {
+    setEditing(item.id, "transform");
+  }, [item.id]);
+
+  // ----------------------------------------------------------
+  // Transform End — no min/max clamping, resize is free
+  // ----------------------------------------------------------
+
+  const handleTransformEnd = useCallback(() => {
     const node = shapeRef.current;
 
-    if (!node) return;
-
-    node.position({
-      x: item.x,
-      y: item.y,
-    });
-
-    node.rotation(item.rotation);
-
-    node.scaleX(1);
-    node.scaleY(1);
-
-    node.getLayer()?.batchDraw();
-
-  }, [
-    item.x,
-    item.y,
-    item.rotation,
-    item.width,
-    item.height
-  ]);
-
-
-
-  const handleTransformEnd = () => {
-
-    const node = shapeRef.current;
-
-    if (!node) return;
-
+    if (!node) {
+      return;
+    }
 
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
 
+    const newWidth = item.width * scaleX;
+    const newHeight = item.height * scaleY;
 
-    const newWidth = Math.max(
-      15,
-      item.width * scaleX
-    );
-
-    const newHeight = Math.max(
-      15,
-      item.height * scaleY
-    );
-
-
-    // reset scale
+    // Reset Konva scale.
+    // The actual width/height are persisted to Yjs.
     node.scaleX(1);
     node.scaleY(1);
 
+    const store = useDesignStore.getState();
 
+    store.updateItemScale(item.id, newWidth, newHeight);
 
-    store.updateItemScale(
-      item.id,
-      newWidth,
-      newHeight
-    );
+    store.updateItemRotation(item.id, node.rotation());
 
+    clearEditing();
+  }, [item.id, item.width, item.height]);
+  const USER_COLORS = [
+  '#F04438', '#F79009', '#7A5AF8', '#2E90FA',
+  '#12B76A', '#EE46BC', '#6938EF', '#F63D68',
+];
 
-    store.updateItemRotation(
-      item.id,
-      node.rotation()
-    );
-
-
-    transformerRef.current
-      ?.getLayer()
-      ?.batchDraw();
-  };
-
-
+function getUserColor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+}
+function getUserInitials(username: string): string {
+  return username.slice(0, 2).toUpperCase();
+}
 
   return (
     <>
       <Group
-
         ref={shapeRef}
-
         x={item.x}
-
         y={item.y}
-
         rotation={item.rotation}
-
         draggable
-
         onClick={onSelect}
-
         onTap={onSelect}
-
-
-        onDragEnd={(e)=>{
-
-          store.updateItemPosition(
-            item.id,
-            e.target.x(),
-            e.target.y()
-          );
-
-        }}
-
-
+        onDragStart={handleDragStart}
+        onDragMove={handleDragEnd}
+        onDragEnd={handleDragEnd}
+        onTransform={handleTransform}
         onTransformEnd={handleTransformEnd}
-
       >
-
-
-        {
-          status === "loaded" && image ? (
-
-            <KonvaImage
-
-              image={image}
-
-              width={item.width}
-
-              height={item.height}
-
-              offsetX={item.width / 2}
-
-              offsetY={item.height / 2}
-
-            />
-
-          ) : (
-
-            <Rect
-
-              width={item.width}
-
-              height={item.height}
-
-              offsetX={item.width / 2}
-
-              offsetY={item.height / 2}
-
-              fill="#ddd"
-
-            />
-
-          )
-
-        }
-
-
-      </Group>
-
-
-
-      {
-        isSelected && (
-
-          <Transformer
-
-            ref={transformerRef}
-
-            rotateEnabled={true}
-
-            enabledAnchors={[
-              "top-left",
-              "top-right",
-              "bottom-left",
-              "bottom-right"
-            ]}
-
-
-            keepRatio={false}
-
-
-            boundBoxFunc={(oldBox,newBox)=>{
-
-              if(
-                newBox.width < 15 ||
-                newBox.height < 15
-              ){
-                return oldBox;
-              }
-
-              return newBox;
-
-            }}
-
-          />
-
-        )
-      }
-
-
-    </>
-  );
-}
-// -----------------------------------------------------------------
-// COMPONENT 2: Interactive Vector Walls
-// -----------------------------------------------------------------
-function VectorWallItem({
-  item,
-  isSelected,
-  onSelect,
-  store,
-}: CanvasItemProps) {
-  if (!item.points) return null;
-
-  const flatPoints = item.points.flatMap((p) => [p.x, p.y]);
+        {/* ==================================================
+            REMOTE USER SELECTION
+        ================================================== */}
+{remoteUsers.length > 0 && (() => {
+  // Compute once — avoids repeating remoteUsers[remoteUsers.length - 1]
+  // and the undefined user reference from before
+  const activeUser = remoteUsers[remoteUsers.length - 1];
+  const activeColor =  getUserColor(activeUser.id);
 
   return (
-    <Group
-      x={item.x}
-      y={item.y}
-      rotation={item.rotation}
-      draggable
-      onClick={onSelect}
-      onTap={onSelect}
-      onDragEnd={(e) => {
-        if (e.target !== e.currentTarget) return;
-        store.updateItemPosition(item.id, e.target.x(), e.target.y());
-      }}
-    >
-      <Line
-        points={flatPoints}
-        fill={item.color || "#64748b"}
-        stroke={isSelected ? "#2563eb" : "#334155"}
-        strokeWidth={isSelected ? 3 : 1}
-        closed={true}
-        lineJoin="round"
+    <>
+      {/* Selection outline — solid, color-coded to the most recent editor,
+          with a soft glow instead of a dashed "pending" look */}
+      <Rect
+        x={-item.width / 2 - 4}
+        y={-item.height / 2 - 4}
+        width={item.width + 8}
+        height={item.height + 8}
+        stroke={activeColor}
+        strokeWidth={2}
+        cornerRadius={4}
+        listening={false}
+        shadowColor={activeColor}
+        shadowBlur={10}
+        shadowOpacity={0.4}
+        shadowForStrokeEnabled={false}
+        zindex={1000}
       />
 
-      {/* 1. INTERACTIVE CORNER HANDLES */}
-      {isSelected &&
-        item.points.map((point, index) => (
-          <Circle
-            key={`corner-${index}`}
-            x={point.x}
-            y={point.y}
-            radius={8}
-            fill="#ffffff"
-            stroke="#2563eb"
-            strokeWidth={2}
-            draggable
-            onMouseEnter={(e) => {
-              const container = e.target.getStage()?.container();
-              if (container) container.style.cursor = "crosshair";
-            }}
-            onMouseLeave={(e) => {
-              const container = e.target.getStage()?.container();
-              if (container) container.style.cursor = "default";
-            }}
-            onDragStart={(e) => {
-              e.cancelBubble = true;
-            }}
-            onDragMove={(e) => {
-              e.cancelBubble = true;
-              store.updateWallVertex(
-                item.id,
-                index,
-                e.target.x(),
-                e.target.y(),
-              );
-            }}
-            onDragEnd={(e) => {
-              e.cancelBubble = true;
-            }}
-          />
-        ))}
+      {/* Presence cluster — avatar stack + name tag, anchored above the item */}
+      <Group x={-item.width / 2} y={-item.height / 2 - 34} listening={false}>
 
-      {/* 2. NEW: INTERACTIVE EDGE/SIDE HANDLES (Midpoints) */}
-      {isSelected &&
-        item.points.map((point, index) => {
-          // Find the next point in the array to form a line segment
-          const nextIndex = (index + 1) % item.points!.length;
-          const nextPoint = item.points![nextIndex];
-
-          // Calculate the exact center of this line segment
-          const midX = (point.x + nextPoint.x) / 2;
-          const midY = (point.y + nextPoint.y) / 2;
-
+        {/* Avatar stack (max 3 visible, then overflow badge) */}
+        {remoteUsers.slice(0, 3).map((user, index) => {
+          const color =  getUserColor(user.id);
           return (
-            <Circle
-              key={`mid-${index}`}
-              x={midX}
-              y={midY}
-              radius={5} // Slightly smaller than corners
-              fill="#ffffff"
-              stroke="#94a3b8" // Slate grey to distinguish from corner handles
-              strokeWidth={2}
-              draggable
-              onMouseEnter={(e) => {
-                const container = e.target.getStage()?.container();
-                // Indicate that this handle moves the whole line
-                if (container) container.style.cursor = "move";
-              }}
-              onMouseLeave={(e) => {
-                const container = e.target.getStage()?.container();
-                if (container) container.style.cursor = "default";
-              }}
-              onDragStart={(e) => {
-                e.cancelBubble = true;
-              }}
-              onDragMove={(e) => {
-                e.cancelBubble = true;
-
-                // Calculate how far the mouse has dragged from the center point
-                const dx = e.target.x() - midX;
-                const dy = e.target.y() - midY;
-
-                // Move both corners simultaneously
-                store.updateWallEdge(item.id, index, nextIndex, dx, dy);
-              }}
-              onDragEnd={(e) => {
-                e.cancelBubble = true;
-              }}
-            />
+            <Group key={user.id} x={index * 20} y={0}>
+              <Circle
+                radius={12}
+                fill={color}
+                stroke="white"
+                strokeWidth={2}
+                shadowColor="black"
+                shadowBlur={4}
+                shadowOpacity={0.18}
+                shadowOffsetY={1}
+              />
+              <Text
+                text={getUserInitials(user.username)}
+                width={24}
+                height={24}
+                offsetX={12}
+                offsetY={12}
+                align="center"
+                verticalAlign="middle"
+                fontSize={10}
+                fontStyle="600"
+                fontFamily="IBM Plex Sans"
+                fill="white"
+                zindex={10000}
+              />
+            </Group>
           );
         })}
-    </Group>
-  );
-}
 
-// -----------------------------------------------------------------
+        {remoteUsers.length > 3 && (
+          <Group x={3 * 20} y={0}>
+            <Circle
+              radius={12}
+              fill="#475467"
+              stroke="white"
+              strokeWidth={2}
+            />
+            <Text
+              text={`+${remoteUsers.length - 3}`}
+              width={24}
+              height={24}
+              offsetX={12}
+              offsetY={12}
+              align="center"
+              verticalAlign="middle"
+              fontSize={9}
+              fontFamily="IBM Plex Sans"
+              fill="white"
+            />
+          </Group>
+        )}
+
+        {/* Name tag for the active editor */}
+        <Group x={0} y={28}>
+          <Rect
+            width={Math.max(60, activeUser.username.length * 6.5 + 20)}
+            height={20}
+            fill={activeColor}
+            cornerRadius={4}
+            shadowColor="black"
+            shadowBlur={4}
+            shadowOpacity={0.2}
+            shadowOffsetY={1}
+          />
+          <Text
+            text={activeUser.username}
+            fontSize={11}
+            fontFamily="IBM Plex Sans"
+            fontStyle="500"
+            fill="white"
+            padding={5}
+          />
+        </Group>
+      </Group>
+    </>
+  );
+})()}
+        {/* ==================================================
+            ACTUAL ASSET
+        ================================================== */}
+
+        {status === "loaded" && image ? (
+          <KonvaImage
+            image={image}
+            width={item.width}
+            height={item.height}
+            offsetX={item.width / 2}
+            offsetY={item.height / 2}
+          />
+        ) : (
+          <Rect
+            width={item.width}
+            height={item.height}
+            offsetX={item.width / 2}
+            offsetY={item.height / 2}
+            fill="#e5e7eb"
+            stroke="#9ca3af"
+            strokeWidth={1}
+          />
+        )}
+      </Group>
+
+      {/* ====================================================
+          TRANSFORMER — no boundBoxFunc, resize is unrestricted
+      ==================================================== */}
+
+      {isSelected && (
+        <Transformer
+          ref={transformerRef}
+          rotateEnabled
+          enabledAnchors={[
+            "top-left",
+            "top-center",
+            "top-right",
+            "middle-left",
+            "middle-right",
+            "bottom-left",
+            "bottom-center",
+            "bottom-right",
+          ]}
+        />
+      )}
+    </>
+  );
+});
+
+// ============================================================
 // MAIN CANVAS
-// -----------------------------------------------------------------
+// ============================================================
+
 export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null);
-  const store = useDesignStore();
+
+  // ==========================================================
+  // YJS ITEMS
+  // ==========================================================
+
+  const items = useCanvasItems();
+
+  // ==========================================================
+  // ASSET CATALOG
+  // ==========================================================
+
   const { data, isLoading } = useGetAsset();
-  if (isLoading) {
-    return <p>Loading</p>;
-  }
-  const catalog = (data as unknown as AssetTemplate[]) || [];
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (!stageRef.current) return;
-    const assetId = e.dataTransfer.getData("text/plain");
-    if (!assetId) return;
 
-    stageRef.current.setPointersPositions(e);
-    const pointerPosition = stageRef.current.getPointerPosition();
-    if (pointerPosition) {
-      const scale = stageRef.current.scaleX();
-      const x = (pointerPosition.x - stageRef.current.x()) / scale;
-      const y = (pointerPosition.y - stageRef.current.y()) / scale;
-      const targetTemplate = catalog.find((t) => t.id === assetId);
-      if (targetTemplate) {
-        store.addItemToCanvasById(targetTemplate, x, y);
-      } else {
-        console.warn(`Asset template with ID ${assetId} not found in catalog.`);
-      }
+  const catalog = useMemo(
+    () => (data as unknown as AssetTemplate[]) || [],
+    [data],
+  );
+
+  const catalogById = useMemo(() => {
+    const map = new Map<string, AssetTemplate>();
+
+    for (const asset of catalog) {
+      map.set(asset.id, asset);
     }
-  };
 
-  const handleStageMouseDown = (e: any) => {
-    if (e.target === e.target.getStage()) store.setActivePlacedItemId(null);
-  };
+    return map;
+  }, [catalog]);
 
-  const handleWheel = (e: any) => {
+  // ==========================================================
+  // DESIGN STORE
+  // ==========================================================
+
+  const activePlacedItemId = useDesignStore(
+    (state) => state.activePlacedItemId,
+  );
+
+  const setActivePlacedItemId = useDesignStore(
+    (state) => state.setActivePlacedItemId,
+  );
+
+  const addItemToCanvasById = useDesignStore(
+    (state) => state.addItemToCanvasById,
+  );
+
+  // ==========================================================
+  // AWARENESS
+  // ==========================================================
+
+  const { states, localClientId } = useAwareness();
+
+  // ==========================================================
+  // BUILD REMOTE SELECTION MAP
+  // ==========================================================
+
+  const remoteSelectionsByItemId = useMemo(() => {
+    const map = new Map<string, RemoteUser[]>();
+
+    for (const [clientId, state] of states.entries()) {
+      // Ignore my own awareness state
+      if (clientId === localClientId) {
+        continue;
+      }
+
+      if (!state.selectedItemId || !state.user) {
+        continue;
+      }
+
+      const itemId = state.selectedItemId;
+
+      const existingUsers = map.get(itemId) ?? [];
+
+      existingUsers.push(state.user);
+
+      map.set(itemId, existingUsers);
+    }
+
+    return map;
+  }, [states, localClientId]);
+
+  // ==========================================================
+  // SORT ITEMS BY Z-INDEX
+  // ==========================================================
+
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => (a.z_index ?? 0) - (b.z_index ?? 0));
+  }, [items]);
+
+  // ==========================================================
+  // SELECT ITEM
+  // ==========================================================
+
+  const handleSelect = useCallback(
+    (itemId: string) => {
+      setActivePlacedItemId(itemId);
+
+      setSelectedItem(itemId);
+    },
+    [setActivePlacedItemId],
+  );
+
+  // ==========================================================
+  // DROP ASSET
+  // ==========================================================
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+
+      const stage = stageRef.current;
+
+      if (!stage) {
+        return;
+      }
+
+      const assetId = e.dataTransfer.getData("text/plain");
+
+      if (!assetId) {
+        return;
+      }
+
+      stage.setPointersPositions(e);
+
+      const pointer = stage.getPointerPosition();
+
+      if (!pointer) {
+        return;
+      }
+
+      const scale = stage.scaleX();
+
+      const x = (pointer.x - stage.x()) / scale;
+
+      const y = (pointer.y - stage.y()) / scale;
+
+      const template = catalogById.get(assetId);
+
+      if (!template) {
+        console.warn("Asset template not found:", assetId);
+
+        return;
+      }
+
+      addItemToCanvasById(template, x, y);
+    },
+    [catalogById, addItemToCanvasById],
+  );
+
+  // ==========================================================
+  // CLICK EMPTY CANVAS
+  // ==========================================================
+
+const handleStageMouseDown = useCallback(
+  (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (e.target === e.target.getStage()) {
+      setActivePlacedItemId(null);
+      setSelectedItem(null);
+    }
+  },
+  [setActivePlacedItemId],
+);
+
+  useEffect(() => {
+    return () => {
+      registerCanvasStage(null);
+    };
+  }, []);
+
+  // ==========================================================
+  // ZOOM
+  // ==========================================================
+
+  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
+
     const stage = stageRef.current;
-    if (!stage) return;
+
+    if (!stage) {
+      return;
+    }
 
     const oldScale = stage.scaleX();
+
     const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+
+    if (!pointer) {
+      return;
+    }
 
     const mousePointTo = {
       x: (pointer.x - stage.x()) / oldScale,
+
       y: (pointer.y - stage.y()) / oldScale,
     };
 
     let direction = e.evt.deltaY > 0 ? 1 : -1;
-    if (e.evt.ctrlKey) direction = -direction;
+
+    if (e.evt.ctrlKey) {
+      direction = -direction;
+    }
 
     const scaleBy = 1.03;
+
     const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    stage.scale({ x: newScale, y: newScale });
+
+    stage.scale({
+      x: newScale,
+      y: newScale,
+    });
 
     stage.position({
       x: pointer.x - mousePointTo.x * newScale,
+
       y: pointer.y - mousePointTo.y * newScale,
     });
-  };
+  }, []);
 
-  const sortedItems = [...store.placedItems].sort(
-    (a, b) => (a.z_index ?? 0) - (b.z_index ?? 0),
+if (isLoading) {
+  return (
+    <div className="w-full h-full bg-canvas-grid flex flex-col items-center justify-center">
+      <div className="relative w-11 h-11 mb-5">
+        <div className="absolute inset-0 rounded-full border-[3px] border-border" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#6B7A58] animate-spin" />
+      </div>
+
+      <p className="text-sm font-medium text-text-main tracking-wide">
+        Loading canvas
+      </p>
+
+      <div className="flex gap-1.5 mt-3">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A58]/50 animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A58]/50 animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#6B7A58]/50 animate-bounce" />
+      </div>
+    </div>
   );
+}
 
   return (
     <div
@@ -446,9 +594,12 @@ export default function Canvas() {
       onDrop={handleDrop}
     >
       <Stage
+        ref={(node) => {
+          stageRef.current = node;
+          registerCanvasStage(node);
+        }}
         width={window.innerWidth}
         height={window.innerHeight}
-        ref={stageRef}
         onMouseDown={handleStageMouseDown}
         onTouchStart={handleStageMouseDown}
         onWheel={handleWheel}
@@ -456,23 +607,15 @@ export default function Canvas() {
       >
         <Layer>
           {sortedItems.map((item) => {
-            const template = catalog.find((t) => t.id === item.asset_id);
-            if (!template) return null;
+            const template = catalogById.get(item.asset_id);
 
-            const isSelected = item.id === store.activePlacedItemId;
-
-            if (item.category === "walls") {
-              return (
-                <VectorWallItem
-                  key={item.id}
-                  item={item}
-                  template={template}
-                  isSelected={isSelected}
-                  onSelect={() => store.setActivePlacedItemId(item.id)}
-                  store={store}
-                />
-              );
+            if (!template) {
+              return null;
             }
+
+            const remoteUsers = remoteSelectionsByItemId.get(item.id) ?? [];
+
+            const isSelected = item.id === activePlacedItemId;
 
             return (
               <StandardItem
@@ -480,8 +623,8 @@ export default function Canvas() {
                 item={item}
                 template={template}
                 isSelected={isSelected}
-                onSelect={() => store.setActivePlacedItemId(item.id)}
-                store={store}
+                onSelect={() => handleSelect(item.id)}
+                remoteUsers={remoteUsers}
               />
             );
           })}

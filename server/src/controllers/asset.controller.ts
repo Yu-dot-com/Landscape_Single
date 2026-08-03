@@ -8,11 +8,11 @@ export const getCategory = async (request: Request, response: Response) => {
   } catch (error) {
     if (error instanceof Error) {
       response.status(400).json({
-        error: error.message,
+        message: error.message,
       });
     } else {
       response.status(400).json({
-        error: "An unexpected error occurred",
+        message: "An unexpected error occurred",
       });
     }
   }
@@ -27,11 +27,11 @@ export const addAsset = async(request:Request,response:Response) => {
   } catch (error) {
     if (error instanceof Error) {
       response.status(400).json({
-        error: error.message,
+        message: error.message,
       });
     } else {
       response.status(400).json({
-        error: "An unexpected error occurred",
+        message: "An unexpected error occurred",
       });
     }
   }
@@ -45,11 +45,11 @@ export const getAsset = async(request:Request,response:Response) => {
   }catch (error) {
     if (error instanceof Error) {
       response.status(400).json({
-        error: error.message,
+        message: error.message,
       });
     } else {
       response.status(400).json({
-        error: "An unexpected error occurred",
+        message: "An unexpected error occurred",
       });
     }
   }

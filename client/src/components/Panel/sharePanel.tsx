@@ -7,7 +7,11 @@ import {
   addMemberSchema,
   type addMemberFormValues,
 } from "../../schemas/memberSchema";
-import { useAddMember, useDeleteMember, useGetMembers } from "../../hooks/useMember";
+import {
+  useAddMember,
+  useDeleteMember,
+  useGetMembers,
+} from "../../hooks/useMember";
 import { useToastStore } from "../../stores/useToastStore";
 
 interface Collaborator {
@@ -22,17 +26,16 @@ interface SharePanelProps {
 
 export default function SharePanel({ onClose }: SharePanelProps) {
   const currentUser = { role: "admin" };
-  const { showToast } = useToastStore();
   const { projectId } = useParams<{ projectId: string }>();
   const { data, isLoading } = useGetMembers(projectId);
-  const { mutate:deleteMember } = useDeleteMember()
+  const { mutate: deleteMember } = useDeleteMember();
 
   const { mutate, isPending } = useAddMember();
 
-  const memberData = data as unknown as  Collaborator[]  | undefined;
+  const memberData = data as unknown as Collaborator[] | undefined;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
+  const addToast = useToastStore((state) => state.addToast);
   const {
     register,
     handleSubmit,
@@ -60,47 +63,84 @@ export default function SharePanel({ onClose }: SharePanelProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (isLoading) {
-    return <p>Loading members</p>;
+if (isLoading) {
+    return (
+      <div className="absolute right-6 top-16 z-50 w-96 rounded-xl border border-border bg-white shadow-xl p-5 text-text-main animate-in fade-in slide-in-from-top-1 duration-150">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-center mb-5">
+          <div className="h-4 w-28 bg-panel rounded-md animate-pulse" />
+          <div className="h-4 w-4 bg-panel rounded animate-pulse" />
+        </div>
+
+        {/* Invite form skeleton */}
+        <div className="space-y-3 mb-5">
+          <div className="flex gap-2">
+            <div className="flex-1 h-9 bg-panel rounded-lg animate-pulse" />
+            <div className="w-21 h-9 bg-panel rounded-lg animate-pulse" />
+          </div>
+          <div className="h-9 w-full bg-panel rounded-lg animate-pulse" />
+        </div>
+
+        {/* Members section skeleton */}
+        <div className="border-t border-border pt-4">
+          <div className="h-3 w-40 bg-panel rounded-md animate-pulse mb-4" />
+
+          <div className="space-y-3.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between animate-pulse"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-panel" />
+                  <div className="h-3 w-36 bg-panel rounded-md" />
+                </div>
+                <div className="h-5 w-12 bg-panel rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
-  if(!data){
-    return <p>nodata</p>
+  if (!data) {
+    return <p>nodata</p>;
   }
   const onSubmit = (data: addMemberFormValues) => {
     console.log("sharte", data);
+
     if (!projectId) {
-      console.error("Missing projectId parameter in the URL.");
+      addToast({
+        type: "error",
+        title: "Cannot invite member",
+        message: "Project ID is missing.",
+      });
       return;
     }
+
     mutate(
       {
         projectId,
         data,
       },
-
       {
         onSuccess: () => {
-          showToast({
-            type: "success",
-
-            title: "Member invited",
-
-            message: `${data.email} can now access this project.`,
-          });
-
           reset();
+
+          addToast({
+            type: "success",
+            title: "Member invited",
+            message: `${data.email} now has access to this project.`,
+          });
         },
 
         onError: (error: any) => {
-          showToast({
+          console.error("Invite failed:", error);
+
+          addToast({
             type: "error",
-
-            title: "Invite failed",
-
-            message:
-              error.response?.data?.message ||
-              error?.error ||
-              "Something went wrong",
+            title: "Invitation failed",
+            message: error?.message || "Could not invite this member.",
           });
         },
       },
@@ -111,37 +151,47 @@ export default function SharePanel({ onClose }: SharePanelProps) {
     return email.substring(0, 2).toUpperCase();
   };
 
-  const handleRemoveMember = (userId:string   ) => {
-      if (!projectId) return;
+  const handleRemoveMember = (userId: string) => {
+    if (!projectId) {
+      addToast({
+        type: "error",
+        title: "Remove failed",
+        message: "Project ID is missing.",
+      });
+      return;
+    }
 
     deleteMember(
-    {
-      projectId,
-      userId,
-    },
-    {
-      onSuccess: () => {
-        showToast({
-          type: "success",
-          title: "Member removed",
-          message: "User access has been removed.",
-        });
+      {
+        projectId,
+        userId,
       },
+      {
+        onSuccess: () => {
+          addToast({
+            type: "success",
+            title: "Member removed",
+            message: "Access has been removed successfully.",
+          });
+        },
 
-      onError: (error: any) => {
-        showToast({
-          type: "error",
-          title: "Remove failed",
-          message:
-            error.response?.data?.message ||
-            "Failed to remove member.",
-        });
+        onError: (error: any) => {
+          console.error("Remove member failed:", error);
+
+          addToast({
+            type: "error",
+            title: "Remove failed",
+            message: error?.message || "Could not remove member.",
+          });
+        },
       },
-    }
-  );
-     
-  }
-
+    );
+  };
+  console.log({
+  isLoading,
+  data,
+  projectId,
+});
   return (
     <div className="absolute right-6 top-16 z-50 w-96 rounded-xl border border-border bg-white shadow-xl p-5 text-text-main animate-in fade-in slide-in-from-top-1 duration-150">
       <div className="flex justify-between items-center mb-4">
@@ -176,22 +226,6 @@ export default function SharePanel({ onClose }: SharePanelProps) {
                 control={control}
                 render={({ field }) => (
                   <>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => setIsDropdownOpen((prev) => !prev)}
-                      className="h-full flex items-center justify-between gap-1.5 border border-border rounded-lg px-3 py-2 text-xs bg-white hover:bg-neutral-50 active:bg-neutral-100 transition-colors focus:outline-none focus:ring-1 focus:ring-[#6B7A58] cursor-pointer min-w-21.25 disabled:opacity-50"
-                    >
-                      <span className="capitalize font-medium">
-                        {field.value}
-                      </span>
-                      <FiChevronDown
-                        size={12}
-                        className={`text-text-muted transition-transform duration-200 ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
 
                     {/* Styled Menu List Box */}
                     {isDropdownOpen && !isPending && (

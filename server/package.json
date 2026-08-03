@@ -6,6 +6,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.0.0",
     "@types/pg": "^8.20.0",
+    "@types/ws": "^8.18.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.4",
@@ -13,12 +14,19 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.81.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "gsap": "^3.15.0",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0",
+    "redis": "^6.1.0",
+    "ws": "^8.16.0",
+    "y-websocket": "^1.5.0",
+    "yjs": "^13.6.14",
     "zod": "^4.4.3"
   },
   "name": "server",
@@ -27,9 +35,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch index.ts",
+    "collab": "tsx watch ./collaboration/yjs-server.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "yjs": "y-websocket",
+    "worker": "tsx ./src/workers/workers.ts"
   },
   "keywords": [],
   "author": "",

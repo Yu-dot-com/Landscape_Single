@@ -62,7 +62,7 @@ export default function ToastContainer() {
       fixed
       top-5
       right-5
-      z-[9999]
+      z-9999
       flex
       flex-col
       gap-3

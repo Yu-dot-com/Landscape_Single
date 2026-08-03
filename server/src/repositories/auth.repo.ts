@@ -24,7 +24,10 @@ export const createUser = async (
   );
   return result.rows[0];
 };
-
+export const findUserByName = async (userId: string) => {
+  const result = await pool.query("SELECT * FROM users WHERE id=$1", [userId]);
+  return result.rows[0];
+};
 export const updateName = async (id: string, name: string) => {
   const result = await pool.query(
     `
