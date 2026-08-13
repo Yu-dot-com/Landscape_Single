@@ -73,7 +73,7 @@ export default function Login() {
                 className="inline-block h-2.5 w-2.5 rounded-full bg-(--landing-accent)"
               />
               <span className="font-mono text-sm uppercase tracking-[0.2em] text-(--landing-foreground)">
-                Terra
+                WeDraft
               </span>
             </Link>
 

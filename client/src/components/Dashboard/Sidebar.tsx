@@ -82,7 +82,7 @@ export default function Sidebar({ username, email, onLogout }: SidebarProps) {
         </div>
 
         <span className="font-display text-xl" style={{ fontWeight: 500 }}>
-          Terra
+          WeDraft
         </span>
       </div>
 

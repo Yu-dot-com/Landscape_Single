@@ -1,4 +1,4 @@
-import { FiMousePointer, FiUploadCloud, FiLayers } from "react-icons/fi";
+import { FiUploadCloud, FiLayers } from "react-icons/fi";
 import { RiLayoutLine, RiLeafLine } from "react-icons/ri";
 import { MdOutlineChair } from "react-icons/md";
 import { BiCategoryAlt } from "react-icons/bi";

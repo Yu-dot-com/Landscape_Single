@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useGetAsset } from "../hooks/useAsset";
 import { useDesignStore } from "../stores/useDesignStore";
-import { FiX, FiSliders, FiSearch } from "react-icons/fi";
+import { FiX, FiSearch } from "react-icons/fi";
 import type { AssetTemplate } from "../types/projectTypes";
 
 export default function AssetGridPanel() {

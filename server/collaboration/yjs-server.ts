@@ -7,6 +7,7 @@ import Redis from "ioredis";
 
 
 const wss = new WebSocketServer({
+  host: "0.0.0.0",
   port: 1234,
 });
 
@@ -95,7 +96,7 @@ wss.on(
 
   const url = new URL(
     req.url ?? "",
-    "http://localhost"
+    "http://172.20.21.209"
   );
 
 

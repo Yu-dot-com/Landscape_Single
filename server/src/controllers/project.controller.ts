@@ -112,9 +112,9 @@ export const deleteProject = async (req: Request, res: Response) => {
   try {
     const user_id = req.user?.id as string;
     const project_id = req.params.projectId as string;
-    const project=await projectServices.getProjectNameById(project_id);
+    const project = await projectServices.getProjectNameById(project_id);
     const result = await projectServices.deleteProject(project_id, user_id);
-    
+
     await activityQueue.add("log-activity", {
       actorId: user_id,
       action: "PROJECT_DELETED",
@@ -131,7 +131,7 @@ export const deleteProject = async (req: Request, res: Response) => {
       });
     }
     return res.status(500).json({
-      errror: "INternal server error",
+      errror: "Internal server error",
     });
   }
 };
@@ -141,6 +141,7 @@ export const updateProjectName = async (req: Request, res: Response) => {
     const project_id = req.params.projectId as string;
     const { name } = req.body;
     const user_id = req.user?.id as string;
+    const project = await projectServices.getProjectNameById(project_id);
 
     const result = await projectServices.updateProjectName(
       project_id,
@@ -149,10 +150,11 @@ export const updateProjectName = async (req: Request, res: Response) => {
     );
     await activityQueue.add("log-activity", {
       actorId: user_id,
-      action: "PROJECT_DELETED",
+      action: "PROJECT_RENAMED",
       projectId: project_id,
       metadata: {
-        projectName: result.name,
+        newProjectName: result.name,
+        oldProjectName: project.name,
       },
     });
     return res.status(200).json(result);

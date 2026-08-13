@@ -215,7 +215,7 @@ export default function Landing() {
             />
 
             <span className="font-mono text-sm uppercase tracking-[0.2em]">
-              Terra
+              WeDraft
             </span>
           </div>
 
@@ -224,7 +224,7 @@ export default function Landing() {
           </p>
 
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-(--landing-muted)">
-            © {new Date().getFullYear()} Terra
+            © {new Date().getFullYear()} WeDraft
           </p>
         </div>
       </footer>

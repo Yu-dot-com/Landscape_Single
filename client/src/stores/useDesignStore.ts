@@ -5,6 +5,7 @@ import type {
   PlacedItem,
 } from "../types/assetTypes";
 import { getItemsMap } from "../collaboration/yjs";
+import { v4 as uuidv4 } from 'uuid';
 
 export const useDesignStore = create<DesignState>((set) => ({
   activeCategory: null,
@@ -25,7 +26,7 @@ export const useDesignStore = create<DesignState>((set) => ({
     if (!template) return null;
 
     const newItem: PlacedItem = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       asset_id: template.id,
       name: template.name,
       category: template.category,

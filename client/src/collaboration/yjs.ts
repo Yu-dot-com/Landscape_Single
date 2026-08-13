@@ -13,7 +13,7 @@ export const joinRoom = (roomId: string) => {
   itemsMap = ydoc.getMap<PlacedItem>("items");
 
   provider = new WebsocketProvider(
-    "ws://localhost:1234",
+    "ws://172.20.21.109:1234",
     `landscape-room-${roomId}`,
     ydoc,
     {

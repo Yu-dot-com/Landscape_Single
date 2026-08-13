@@ -3,11 +3,11 @@ services:
     image: postgres:16-alpine
     container_name: landscape-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Yu21622*       # Raw password for Postgres service
-      POSTGRES_DB: Landscape
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -15,10 +15,10 @@ services:
     image: redis:7-alpine
     container_name: landscape-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redisdata:/data
-    command: redis-server --appendonly yes     
+    command: redis-server --appendonly yes
 
   client:
     build:
@@ -31,8 +31,8 @@ services:
       - ./client:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true
-      - VITE_API_BASE_URL=http://localhost:3000
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
     depends_on:
       - server
 
@@ -47,11 +47,11 @@ services:
       - ./server:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - JWT_SECRET=fwe3294jdwe
-      - DATABASE_URL=postgresql://postgres:Yu21622%2A@postgres:5432/Landscape
-      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
       - postgres
       - redis
@@ -68,13 +68,13 @@ services:
       - /app/node_modules
     command: npm run collab
     environment:
-      - JWT_SECRET=fwe3294jdwe
-      - NODE_ENV=development
-      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=${NODE_ENV}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
       - postgres
       - redis
-    
+
   worker:
     build:
       context: ./server
@@ -84,12 +84,12 @@ services:
       - ./server:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=development
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://postgres:Yu21622%2A@postgres:5432/Landscape
-      - CLOUDINARY_CLOUD_NAME=ddalcxun8
-      - CLOUDINARY_API_KEY=915782966366777
-      - CLOUDINARY_API_SECRET=lnKVKIR1xe7PokgXxV7r1fjM7WI
+      - NODE_ENV=${NODE_ENV}
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
     command: npm run worker
     depends_on:
       - redis

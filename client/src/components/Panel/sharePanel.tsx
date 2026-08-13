@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom"; // Swap with "next/navigation" if using Next.js
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FiTrash2, FiUserCheck, FiChevronDown } from "react-icons/fi";
+import { FiTrash2, FiUserCheck } from "react-icons/fi";
 import {
   addMemberSchema,
   type addMemberFormValues,
@@ -27,12 +27,12 @@ interface SharePanelProps {
 export default function SharePanel({ onClose }: SharePanelProps) {
   const currentUser = { role: "admin" };
   const { projectId } = useParams<{ projectId: string }>();
-  const { data, isLoading } = useGetMembers(projectId);
+  const { data, isLoading } = useGetMembers(projectId ?? "");
   const { mutate: deleteMember } = useDeleteMember();
 
   const { mutate, isPending } = useAddMember();
 
-  const memberData = data as unknown as Collaborator[] | undefined;
+  const memberData = (data as unknown as Collaborator[]) ?? [];
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const addToast = useToastStore((state) => state.addToast);

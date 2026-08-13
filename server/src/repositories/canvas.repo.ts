@@ -14,28 +14,26 @@ export const saveCanvas = async (projectId: string, placedItems: any[]) => {
       [projectId],
     );
 
-for (const item of placedItems) {
+    for (const item of placedItems) {
       await client.query(
-        `
-        INSERT INTO placed_items
-        (
-          project_id,
-          asset_id,
-          x,
-          y,
-          width,
-          height,
-          rotation,
-          z_index,
-          color,
-          points
-        )
-
-        VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-
-        `,
+        `INSERT INTO placed_items
+(
+  id,
+  project_id,
+  asset_id,
+  x,
+  y,
+  width,
+  height,
+  rotation,
+  z_index,
+  color,
+  points
+)
+VALUES
+($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
+          item.id,
           projectId,
           item.asset_id,
           item.x,
@@ -62,13 +60,14 @@ for (const item of placedItems) {
   }
 };
 
-export const getCanvas = async(projectId:string) => {
+export const getCanvas = async (projectId: string) => {
   const result = await pool.query(
     `
     SELECT id, asset_id,x,y,width,height,rotation,z_index,color,points
     FROM placed_items
     WHERE project_id=$1
-    `,[projectId]
-  )
-  return result.rows
-}
+    `,
+    [projectId],
+  );
+  return result.rows;
+};

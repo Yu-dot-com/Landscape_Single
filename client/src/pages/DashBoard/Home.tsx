@@ -1,4 +1,4 @@
-import { ArrowUpRight, Leaf, Sofa, Box, Lamp } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useCurrentUser } from "../../hooks/useAuth";
 import {
   useGetProjectCount,
@@ -58,63 +58,6 @@ const ThemeStyle = () => (
   `}</style>
 );
 
-const stats = [
-  { label: "Projects", value: "12" },
-  { label: "Collaborators", value: "7" },
-  { label: "Objects Placed", value: "342" },
-  { label: "Shared Projects", value: "4" },
-];
-
-const activity = [
-  {
-    initials: "AL",
-    text: "Alex joined",
-    project: "Modern Backyard",
-    time: "12m ago",
-  },
-  {
-    initials: "MV",
-    text: "You added a new tree to",
-    project: "Riverside Garden",
-    time: "1h ago",
-  },
-  {
-    initials: "SA",
-    text: "Sarah edited",
-    project: "Japanese Garden",
-    time: "3h ago",
-  },
-  {
-    initials: "MV",
-    text: "You created",
-    project: "Rooftop Garden",
-    time: "Yesterday",
-  },
-];
-
-const sharedProjects = [
-  {
-    name: "Riverside Garden",
-    owner: "Alex Chen",
-    role: "Editor",
-    updated: "2h ago",
-    variant: "backyard",
-  },
-  {
-    name: "Courtyard Retreat",
-    owner: "Sarah Kim",
-    role: "Viewer",
-    updated: "1d ago",
-    variant: "japanese",
-  },
-];
-
-const assetCategories = [
-  { name: "Plants", count: 186, Icon: Leaf },
-  { name: "Furniture", count: 74, Icon: Sofa },
-  { name: "Structures", count: 52, Icon: Box },
-  { name: "Lighting", count: 30, Icon: Lamp },
-];
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -276,6 +219,19 @@ export function ActivityRow({ item, isLast }: { item: any; isLast: boolean }) {
             <span className="font-medium">{item.metadata.projectName}</span>
           </>
         );
+      
+      case "PROJECT_RENAMED":
+         return (
+          <>
+            <span className="font-medium">{item.actor_username}</span> renamed{" "}
+             <span className="font-medium">
+              {item.metadata.oldProjectName} 
+            </span> to {" "}
+            <span className="font-medium">
+              {item.metadata.newProjectName}
+            </span>
+          </>
+        );
 
       case "MEMBER_DELETED":
         return (
@@ -319,40 +275,6 @@ export function ActivityRow({ item, isLast }: { item: any; isLast: boolean }) {
   );
 }
 4;
-
-function AssetTile({
-  name,
-  count,
-  Icon,
-}: {
-  name: any;
-  count: any;
-  Icon: any;
-}) {
-  return (
-    <div className="terra-tile rounded-2xl border border-border bg-canvas p-6 flex flex-col items-center text-center gap-3 cursor-pointer">
-      <div className="terra-tile-plate w-14 h-14 rounded-full flex items-center justify-center relative">
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{ backgroundColor: "var(--color-dark-accent)", opacity: 0.16 }}
-        />
-        <div
-          className="absolute inset-[6px] rounded-full border"
-          style={{ borderColor: "var(--color-dark-accent)", opacity: 0.35 }}
-        />
-        <Icon
-          size={22}
-          strokeWidth={1.6}
-          className="text-dark-accent relative"
-        />
-      </div>
-      <div>
-        <p className="text-sm font-medium">{name}</p>
-        <p className="text-xs text-muted font-mono mt-0.5">{count} assets</p>
-      </div>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const { data: currentUser, isLoading: loadingUser } = useCurrentUser();

@@ -50,7 +50,7 @@ export function SiteNav() {
           />
 
           <span className="font-mono text-[0.95rem] uppercase tracking-[0.2em] text-[#2d2c28]">
-            Terra
+            WeDraft
           </span>
         </a>
 

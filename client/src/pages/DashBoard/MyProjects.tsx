@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Plus, Sprout, Clock, LayoutGrid } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import ProjectCard from "../../components/Dashboard/ProjectCard";
 import ProjectCardSkeleton from "../../components/Dashboard/ProjectCardSkeleton";
 import { useGetOwnedProjects } from "../../hooks/useProject";
@@ -26,7 +25,6 @@ function isRecentlyUpdated(project: projectType): boolean {
 
 export default function MyProject() {
   const { data, isLoading } = useGetOwnedProjects();
-  const navigate = useNavigate();
 
   const totalProjects = data?.length ?? 0;
   const recentlyUpdatedCount = useMemo(

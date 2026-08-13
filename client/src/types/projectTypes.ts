@@ -1,8 +1,7 @@
 export interface createProjectType {
-  id: string;
   name: string;
-  description: string;
-  thumbnail_url: string;
+  description?: string;
+  thumbnail_url?: string;
 }
 
 export interface projectType {

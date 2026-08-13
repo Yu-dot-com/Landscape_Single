@@ -18,7 +18,7 @@ export const useAddMember = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["getMembers"]["deleteMember"],
+        queryKey: ["getMembers"],
       });
     },
     onError: (error) => {

@@ -5,7 +5,6 @@ import {
   FiShare2,
   FiDownload,
   FiSave,
-  FiChevronDown,
   FiActivity
 } from "react-icons/fi";
 import { RiLeafLine } from "react-icons/ri";
@@ -90,9 +89,9 @@ export default function Toolbar() {
 
         <div className="relative flex items-center gap-1 min-w-0">
           <span className="text-sm font-semibold text-text-main truncate">
-            My Project
+            WeDraft
           </span>
-          <FiChevronDown size={13} className="text-text-muted shrink-0" />
+          {/* //<FiChevronDown size={13} className="text-text-muted shrink-0" /> */}
           <select
             className="absolute inset-0 opacity-0 cursor-pointer"
             aria-label="Project options"
